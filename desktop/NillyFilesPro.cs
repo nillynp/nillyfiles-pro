@@ -35,8 +35,8 @@ using System.Windows.Forms;
 [assembly: AssemblyProduct("NillyFiles Pro")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 Nilly graphics (Sotiris Christos) — https://nillygraphics.com/")]
 [assembly: AssemblyTrademark("Nilly graphics / Nillygraphics — Sotiris Christos")]
-[assembly: AssemblyVersion("1.1.1.0")]
-[assembly: AssemblyFileVersion("1.1.1.0")]
+[assembly: AssemblyVersion("1.2.0.0")]
+[assembly: AssemblyFileVersion("1.2.0.0")]
 
 namespace NillyFilesPro
 {
@@ -1687,6 +1687,9 @@ namespace NillyFilesPro
                 string diskExe = FindSiblingExe("NillyDiskPro", "NillyDiskPro.exe");
                 if (diskExe != null && !string.IsNullOrEmpty(targetDir))
                     miSuite.DropDownItems.Add("Ανάλυση Χώρου (NillyDisk Pro)", null, delegate { LaunchSibling(diskExe, "\"" + targetDir + "\""); });
+                string searchExe = FindSiblingExe("NillySearchPro", "NillySearchPro.exe");
+                if (searchExe != null && !string.IsNullOrEmpty(targetDir))
+                    miSuite.DropDownItems.Add("Αναζήτηση εδώ (NillySearch Pro)", null, delegate { LaunchSibling(searchExe, "\"" + targetDir + "\""); });
                 if (first != null && !first.IsDir)
                 {
                     string codeExe = FindSiblingExe("NillyCodePro", "NillyCodePro.exe");
@@ -1702,6 +1705,16 @@ namespace NillyFilesPro
                     {
                         string viewExe = FindSiblingExe("NillyViewPro", "NillyViewPro.exe");
                         if (viewExe != null) miSuite.DropDownItems.Add("Προβολή σε NillyView Pro", null, delegate { LaunchSibling(viewExe, "\"" + first.FullPath + "\""); });
+                    }
+                    if (first.BadgeKind == 5)
+                    {
+                        string mediaExe = FindSiblingExe("NillyMediaLite", "NillyMediaLite.exe");
+                        if (mediaExe != null) miSuite.DropDownItems.Add("Αναπαραγωγή σε NillyMedia Lite", null, delegate { LaunchSibling(mediaExe, "\"" + first.FullPath + "\""); });
+                    }
+                    if (first.Ext == ".ttf" || first.Ext == ".otf")
+                    {
+                        string fontExe = FindSiblingExe("NillyFontPro", "NillyFontPro.exe");
+                        if (fontExe != null) miSuite.DropDownItems.Add("Δοκιμή / Εγκατάσταση σε NillyFont Pro", null, delegate { LaunchSibling(fontExe, "\"" + first.FullPath + "\""); });
                     }
                 }
                 string batchExe = FindSiblingExe("NillyBatchPro", "NillyBatchPro.exe");
@@ -1769,6 +1782,21 @@ namespace NillyFilesPro
         public MainForm(string startPath, bool smokeMode)
         {
             _settings = smokeMode ? new AppSettings() : AppSettings.Load();
+            if (!smokeMode)
+            {
+                try
+                {
+                    string suiteTheme = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"NillySuite\suite.theme");
+                    string localIni = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"NillyFilesPro\settings.ini");
+                    if (File.Exists(suiteTheme) && (!File.Exists(localIni) || File.GetLastWriteTimeUtc(suiteTheme) > File.GetLastWriteTimeUtc(localIni)))
+                    {
+                        string s = File.ReadAllText(suiteTheme, Encoding.ASCII).Trim();
+                        if (s.Equals("light", StringComparison.OrdinalIgnoreCase)) _settings.DarkTheme = false;
+                        else if (s.Equals("dark", StringComparison.OrdinalIgnoreCase)) _settings.DarkTheme = true;
+                    }
+                }
+                catch { }
+            }
             _theme = Theme.Create(_settings.DarkTheme);
 
             Text = "NillyFiles Pro — Ultra-Light File Explorer | Nilly graphics";
