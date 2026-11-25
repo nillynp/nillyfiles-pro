@@ -35,8 +35,8 @@ using System.Windows.Forms;
 [assembly: AssemblyProduct("NillyFiles Pro")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 Nilly graphics (Sotiris Christos) — https://nillygraphics.com/")]
 [assembly: AssemblyTrademark("Nilly graphics / Nillygraphics — Sotiris Christos")]
-[assembly: AssemblyVersion("1.0.1.0")]
-[assembly: AssemblyFileVersion("1.0.1.0")]
+[assembly: AssemblyVersion("1.0.2.0")]
+[assembly: AssemblyFileVersion("1.0.2.0")]
 
 namespace NillyFilesPro
 {
@@ -2248,7 +2248,7 @@ namespace NillyFilesPro
 
                 PictureBox pic = new PictureBox { Size = new Size(42, 42), Location = new Point(18, 16), SizeMode = PictureBoxSizeMode.Zoom, Image = _logoBmp };
                 Label hdr = new Label { Text = "NillyFiles Pro v1.0", Location = new Point(70, 16), AutoSize = true, Font = new Font("Segoe UI", 13.0f, FontStyle.Bold), ForeColor = _theme.FgMain };
-                Label sub = new Label { Text = "Ultra-Light Native Windows 10/11 Tabbed & Dual-Pane File Explorer", Location = new Point(72, 42), AutoSize = true, Font = _fontSmall, ForeColor = _theme.Accent };
+                Label sub = new Label { Text = "Ultra-Light Native Windows 10/11 Tabbed & Dual-Pane File Explorer", Location = new Point(72, 42), AutoSize = true, Font = _fontSmall, ForeColor = _theme.Accent, UseMnemonic = false };
 
                 Panel card = new Panel { Location = new Point(18, 72), Size = new Size(474, 170), BackColor = _theme.BgPanel };
                 Label specs = new Label
