@@ -35,8 +35,8 @@ using System.Windows.Forms;
 [assembly: AssemblyProduct("NillyFiles Pro")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 Nilly graphics (Sotiris Christos) — https://nillygraphics.com/")]
 [assembly: AssemblyTrademark("Nilly graphics / Nillygraphics — Sotiris Christos")]
-[assembly: AssemblyVersion("1.2.0.0")]
-[assembly: AssemblyFileVersion("1.2.0.0")]
+[assembly: AssemblyVersion("1.2.1.0")]
+[assembly: AssemblyFileVersion("1.2.1.0")]
 
 namespace NillyFilesPro
 {
@@ -453,6 +453,24 @@ namespace NillyFilesPro
                    ext == ".log" || ext == ".cs" || ext == ".ps1" || ext == ".bat" || ext == ".cmd" || ext == ".html" ||
                    ext == ".css" || ext == ".js" || ext == ".ts" || ext == ".py" || ext == ".php" || ext == ".sql" || ext == ".svg" || ext == ".yml" || ext == ".yaml";
         }
+
+        public static string FriendlyError(Exception ex)
+        {
+            if (ex == null) return "Άγνωστο σφάλμα.";
+            string raw = (ex.Message ?? "").Trim();
+            string low = raw.ToLowerInvariant();
+            if (ex is UnauthorizedAccessException || low.Contains("access is denied") || low.Contains("access to the path"))
+                return "Δεν υπάρχει δικαίωμα πρόσβασης σε αυτόν τον φάκελο ή αρχείο.";
+            if (low.Contains("being used by another process") || low.Contains("sharing violation"))
+                return "Το αρχείο ή ο φάκελος χρησιμοποιείται από άλλο πρόγραμμα. Κλείσε το και δοκίμασε ξανά.";
+            if (ex is PathTooLongException || low.Contains("path too long"))
+                return "Η διαδρομή είναι υπερβολικά μεγάλη για τα Windows.";
+            if (low.Contains("already exists"))
+                return "Υπάρχει ήδη αρχείο ή φάκελος με αυτό το όνομα.";
+            if (low.Contains("no application is associated"))
+                return "Δεν υπάρχει συνδεδεμένη εφαρμογή στα Windows για αυτόν τον τύπο αρχείου.";
+            return raw;
+        }
     }
 
     // ========================================================================
@@ -463,6 +481,7 @@ namespace NillyFilesPro
         public string Name;
         public string FullPath;
         public bool IsDir;
+        public bool IsParentUp;
         public bool IsHidden;
         public long Size;
         public DateTime Modified;
@@ -1146,6 +1165,7 @@ namespace NillyFilesPro
             bool asc = tab.SortAsc;
             _visible.Sort(delegate(FileEntry a, FileEntry b)
             {
+                if (a.IsParentUp != b.IsParentUp) return a.IsParentUp ? -1 : 1;
                 if (a.IsDir != b.IsDir) return a.IsDir ? -1 : 1;
                 int cmp = 0;
                 if (col == 0) cmp = StringComparer.CurrentCultureIgnoreCase.Compare(a.Name, b.Name);
@@ -1155,6 +1175,26 @@ namespace NillyFilesPro
                 if (cmp == 0) cmp = StringComparer.CurrentCultureIgnoreCase.Compare(a.Name, b.Name);
                 return asc ? cmp : -cmp;
             });
+
+            if (q.Length == 0 && !string.IsNullOrEmpty(tab.Path))
+            {
+                DirectoryInfo par = Directory.GetParent(tab.Path.TrimEnd('\\'));
+                if (par != null)
+                {
+                    FileEntry up = new FileEntry();
+                    up.Name = "..";
+                    up.FullPath = par.FullName;
+                    up.IsDir = true;
+                    up.IsParentUp = true;
+                    up.Size = -1;
+                    up.TypeLabel = "Επάνω φάκελος";
+                    up.BadgeKind = 9;
+                    up.NormName = "..";
+                    up.SizeText = "";
+                    up.DateText = "";
+                    _visible.Insert(0, up);
+                }
+            }
 
             _lv.BeginUpdate();
             _lv.SelectedIndices.Clear();
@@ -1272,6 +1312,16 @@ namespace NillyFilesPro
 
         private void DrawMiniBadge(Graphics g, int kind, int x, int y)
         {
+            if (kind == 9) // Up-parent (..) crisp arrow glyph
+            {
+                using (Pen p = new Pen(_theme.Cyan, 1.8f))
+                {
+                    g.DrawLine(p, x + 7, y + 2, x + 7, y + 12);
+                    g.DrawLine(p, x + 3, y + 6, x + 7, y + 2);
+                    g.DrawLine(p, x + 11, y + 6, x + 7, y + 2);
+                }
+                return;
+            }
             if (kind == 0) // Crisp Folder glyph
             {
                 using (SolidBrush b = new SolidBrush(_theme.Accent))
@@ -1318,7 +1368,8 @@ namespace NillyFilesPro
         {
             List<FileEntry> entries = GetSelectedEntries();
             List<string> paths = new List<string>(entries.Count);
-            for (int i = 0; i < entries.Count; i++) paths.Add(entries[i].FullPath);
+            for (int i = 0; i < entries.Count; i++)
+                if (!entries[i].IsParentUp) paths.Add(entries[i].FullPath);
             return paths;
         }
 
@@ -1327,6 +1378,11 @@ namespace NillyFilesPro
             List<FileEntry> sel = GetSelectedEntries();
             if (sel.Count == 0) return;
             FileEntry first = sel[0];
+            if (first.IsParentUp)
+            {
+                GoUp();
+                return;
+            }
             if (first.IsDir)
             {
                 Navigate(first.FullPath, true);
@@ -1338,7 +1394,7 @@ namespace NillyFilesPro
             }
             catch (Exception ex)
             {
-                _owner.SetStatus("Αδυναμία ανοίγματος: " + ex.Message);
+                _owner.SetStatus("Αδυναμία ανοίγματος: " + Fmt.FriendlyError(ex));
             }
         }
 
@@ -1386,7 +1442,7 @@ namespace NillyFilesPro
         public void RenameSelected()
         {
             List<FileEntry> sel = GetSelectedEntries();
-            if (sel.Count != 1) return;
+            if (sel.Count != 1 || sel[0].IsParentUp) return;
             FileEntry f = sel[0];
             string newName = PromptText("Μετονομασία", "Νέο όνομα για: " + f.Name, f.Name, !f.IsDir);
             if (string.IsNullOrEmpty(newName) || newName == f.Name) return;
@@ -1400,7 +1456,7 @@ namespace NillyFilesPro
             }
             catch (Exception ex)
             {
-                MessageBox.Show(_owner, ex.Message, "NillyFiles Pro — Μετονομασία", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(_owner, Fmt.FriendlyError(ex), "NillyFiles Pro — Μετονομασία", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -1417,7 +1473,7 @@ namespace NillyFilesPro
             }
             catch (Exception ex)
             {
-                MessageBox.Show(_owner, ex.Message, "NillyFiles Pro", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(_owner, Fmt.FriendlyError(ex), "NillyFiles Pro", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -1434,7 +1490,7 @@ namespace NillyFilesPro
             }
             catch (Exception ex)
             {
-                MessageBox.Show(_owner, ex.Message, "NillyFiles Pro", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(_owner, Fmt.FriendlyError(ex), "NillyFiles Pro", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -1547,7 +1603,9 @@ namespace NillyFilesPro
             else if (e.Control && e.KeyCode == Keys.A)
             {
                 _lv.BeginUpdate();
-                for (int i = 0; i < _visible.Count; i++) _lv.SelectedIndices.Add(i);
+                _lv.SelectedIndices.Clear();
+                for (int i = 0; i < _visible.Count; i++)
+                    if (!_visible[i].IsParentUp) _lv.SelectedIndices.Add(i);
                 _lv.EndUpdate();
                 e.Handled = true;
             }
