@@ -35,8 +35,8 @@ using System.Windows.Forms;
 [assembly: AssemblyProduct("NillyFiles Pro")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 Nilly graphics (Sotiris Christos) — https://nillygraphics.com/")]
 [assembly: AssemblyTrademark("Nilly graphics / Nillygraphics — Sotiris Christos")]
-[assembly: AssemblyVersion("1.1.0.0")]
-[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyVersion("1.1.1.0")]
+[assembly: AssemblyFileVersion("1.1.1.0")]
 
 namespace NillyFilesPro
 {
@@ -1444,8 +1444,12 @@ namespace NillyFilesPro
             string text = paths.Count > 0 ? string.Join(Environment.NewLine, paths.ToArray()) : CurrentPath;
             if (!string.IsNullOrEmpty(text))
             {
-                Clipboard.SetText(text);
-                _owner.SetStatus("✓ Αντιγράφηκε η διαδρομή στο πρόχειρο.");
+                try
+                {
+                    Clipboard.SetText(text);
+                    _owner.SetStatus("✓ Αντιγράφηκε η διαδρομή στο πρόχειρο.");
+                }
+                catch { _owner.SetStatus("⚠ Το πρόχειρο είναι απασχολημένο. Δοκίμασε ξανά."); }
             }
         }
 
