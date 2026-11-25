@@ -35,8 +35,8 @@ using System.Windows.Forms;
 [assembly: AssemblyProduct("NillyFiles Pro")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 Nilly graphics (Sotiris Christos) — https://nillygraphics.com/")]
 [assembly: AssemblyTrademark("Nilly graphics / Nillygraphics — Sotiris Christos")]
-[assembly: AssemblyVersion("1.0.2.0")]
-[assembly: AssemblyFileVersion("1.0.2.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 namespace NillyFilesPro
 {
@@ -1584,6 +1584,28 @@ namespace NillyFilesPro
                 _owner.ReloadAllPanes();
         }
 
+        private static string FindSiblingExe(string folder, string exeName)
+        {
+            try
+            {
+                string appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"NillySuite\" + folder + @"\" + exeName);
+                if (File.Exists(appData)) return appData;
+                DirectoryInfo par = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\'));
+                if (par != null)
+                {
+                    string sib = Path.Combine(Path.Combine(par.FullName, folder), exeName);
+                    if (File.Exists(sib)) return sib;
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private static void LaunchSibling(string exe, string args)
+        {
+            try { Process.Start(new ProcessStartInfo(exe, args) { WorkingDirectory = Path.GetDirectoryName(exe), UseShellExecute = true }); } catch { }
+        }
+
         private ContextMenuStrip BuildContextMenu()
         {
             ContextMenuStrip m = new ContextMenuStrip();
@@ -1593,6 +1615,7 @@ namespace NillyFilesPro
                 List<FileEntry> sel = GetSelectedEntries();
                 if (sel.Count > 0 && sel[0].IsDir) AddNewTab(sel[0].FullPath, true);
             });
+            ToolStripMenuItem miSuite = new ToolStripMenuItem("Nilly Suite");
             ToolStripMenuItem miCopy = new ToolStripMenuItem("Αντιγραφή (Ctrl+C)", null, delegate { CopySelection(false); });
             ToolStripMenuItem miCut = new ToolStripMenuItem("Αποκοπή (Ctrl+X)", null, delegate { CopySelection(true); });
             ToolStripMenuItem miPaste = new ToolStripMenuItem("Επικόλληση (Ctrl+V)", null, delegate { PasteHere(); });
@@ -1618,7 +1641,7 @@ namespace NillyFilesPro
 
             m.Items.AddRange(new ToolStripItem[]
             {
-                miOpen, miNewTab, new ToolStripSeparator(),
+                miOpen, miNewTab, miSuite, new ToolStripSeparator(),
                 miCopy, miCut, miPaste, miCopyOther, miMoveOther, new ToolStripSeparator(),
                 miRen, miDel, new ToolStripSeparator(),
                 miNewDir, miNewTxt, new ToolStripSeparator(),
@@ -1640,6 +1663,54 @@ namespace NillyFilesPro
                 miMoveOther.Visible = _owner.IsDualPane && hasSel;
                 miRen.Enabled = (sel.Count == 1);
                 miDel.Enabled = hasSel;
+
+                // Populate dynamic Nilly Suite submenu with ONLY installed sibling tools!
+                miSuite.DropDownItems.Clear();
+                string targetDir = (sel.Count == 1 && sel[0].IsDir) ? sel[0].FullPath : CurrentPath;
+                FileEntry first = hasSel ? sel[0] : null;
+                string zipExe = FindSiblingExe("NillyZipPro", "NillyZipPro.exe");
+                if (zipExe != null && hasSel)
+                {
+                    if (sel.Count == 1 && !first.IsDir && (first.Ext == ".zip" || first.Ext == ".rar" || first.Ext == ".7z"))
+                        miSuite.DropDownItems.Add("Αποσυμπίεση εδώ (NillyZip Pro)", null, delegate { LaunchSibling(zipExe, "--extract-here \"" + first.FullPath + "\""); });
+                    miSuite.DropDownItems.Add("Συμπίεση σε ZIP (NillyZip Pro)", null, delegate
+                    {
+                        StringBuilder sb = new StringBuilder("--compress");
+                        foreach (FileEntry fe in sel) sb.Append(" \"").Append(fe.FullPath).Append('"');
+                        LaunchSibling(zipExe, sb.ToString());
+                    });
+                }
+                string diskExe = FindSiblingExe("NillyDiskPro", "NillyDiskPro.exe");
+                if (diskExe != null && !string.IsNullOrEmpty(targetDir))
+                    miSuite.DropDownItems.Add("Ανάλυση Χώρου (NillyDisk Pro)", null, delegate { LaunchSibling(diskExe, "\"" + targetDir + "\""); });
+                if (first != null && !first.IsDir)
+                {
+                    string codeExe = FindSiblingExe("NillyCodePro", "NillyCodePro.exe");
+                    if (codeExe != null) miSuite.DropDownItems.Add("Επεξεργασία σε NillyCode Pro", null, delegate { LaunchSibling(codeExe, "\"" + first.FullPath + "\""); });
+                    string noteExe = FindSiblingExe("NillyNotePro", "NillyNotePro.exe");
+                    if (noteExe != null) miSuite.DropDownItems.Add("Άνοιγμα σε NillyNote Pro", null, delegate { LaunchSibling(noteExe, "\"" + first.FullPath + "\""); });
+                    if (first.Ext == ".pdf")
+                    {
+                        string docExe = FindSiblingExe("NillyDocPro", "NillyDocPro.exe");
+                        if (docExe != null) miSuite.DropDownItems.Add("Άνοιγμα σε NillyDoc Pro (PDF)", null, delegate { LaunchSibling(docExe, "\"" + first.FullPath + "\""); });
+                    }
+                    if (first.BadgeKind == 1)
+                    {
+                        string viewExe = FindSiblingExe("NillyViewPro", "NillyViewPro.exe");
+                        if (viewExe != null) miSuite.DropDownItems.Add("Προβολή σε NillyView Pro", null, delegate { LaunchSibling(viewExe, "\"" + first.FullPath + "\""); });
+                    }
+                }
+                string batchExe = FindSiblingExe("NillyBatchPro", "NillyBatchPro.exe");
+                if (batchExe != null && hasSel)
+                {
+                    miSuite.DropDownItems.Add("Μαζική επεξεργασία (NillyBatch Pro)", null, delegate
+                    {
+                        StringBuilder sb = new StringBuilder();
+                        foreach (FileEntry fe in sel) sb.Append(" \"").Append(fe.FullPath).Append('"');
+                        LaunchSibling(batchExe, sb.ToString().Trim());
+                    });
+                }
+                miSuite.Visible = (miSuite.DropDownItems.Count > 0);
             };
             return m;
         }
