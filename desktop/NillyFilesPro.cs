@@ -35,8 +35,8 @@ using System.Windows.Forms;
 [assembly: AssemblyProduct("NillyFiles Pro")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 Nilly graphics (Sotiris Christos) — https://nillygraphics.com/")]
 [assembly: AssemblyTrademark("Nilly graphics / Nillygraphics — Sotiris Christos")]
-[assembly: AssemblyVersion("1.2.2.0")]
-[assembly: AssemblyFileVersion("1.2.2.0")]
+[assembly: AssemblyVersion("1.2.3.0")]
+[assembly: AssemblyFileVersion("1.2.3.0")]
 
 namespace NillyFilesPro
 {
@@ -1831,6 +1831,7 @@ namespace NillyFilesPro
         private readonly Font _fontUi = new Font("Segoe UI", 9.0f, FontStyle.Regular);
         private readonly Font _fontBold = new Font("Segoe UI", 9.0f, FontStyle.Bold);
         private readonly Font _fontSmall = new Font("Segoe UI", 8.2f, FontStyle.Regular);
+        private readonly Font _fontDriveSub = new Font("Segoe UI", 7.4f, FontStyle.Regular);
 
         public Theme CurrentTheme { get { return _theme; } }
         public bool ShowHidden { get { return _settings.ShowHidden; } }
@@ -2298,7 +2299,7 @@ namespace NillyFilesPro
                 using (Pen p = new Pen(_theme.Border)) g.DrawRectangle(p, 0, 0, card.Width - 1, card.Height - 1);
                 TextRenderer.DrawText(g, string.Format("{0} ({1})", vol, root.TrimEnd('\\')), _fontBold,
                     new Rectangle(8, 4, card.Width - 16, 17), _theme.FgMain, TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
-                TextRenderer.DrawText(g, string.Format("{0:0.0} GB ελεύθ. / {1:0.0} GB", freeGb, totalGb), new Font("Segoe UI", 7.4f),
+                TextRenderer.DrawText(g, string.Format("{0:0.0} GB ελεύθ. / {1:0.0} GB", freeGb, totalGb), _fontDriveSub,
                     new Rectangle(8, 20, card.Width - 16, 14), _theme.FgMuted, TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
 
                 Rectangle barBg = new Rectangle(8, 36, card.Width - 16, 4);
@@ -2505,6 +2506,11 @@ namespace NillyFilesPro
             {
                 if (_logoBmp != null) { _logoBmp.Dispose(); _logoBmp = null; }
                 if (_prevImg != null && _prevImg.Image != null) { _prevImg.Image.Dispose(); _prevImg.Image = null; }
+                _fontTitle.Dispose();
+                _fontUi.Dispose();
+                _fontBold.Dispose();
+                _fontSmall.Dispose();
+                _fontDriveSub.Dispose();
                 _tip.Dispose();
             }
             base.Dispose(disposing);
